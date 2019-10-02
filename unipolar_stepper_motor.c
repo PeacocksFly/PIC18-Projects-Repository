@@ -7,7 +7,11 @@
 
 
 #include <xc.h>
+#pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP
+#define _XTAL_FREQ 8000000
 
 void main(void) {
+    
+    
     return;
 }
