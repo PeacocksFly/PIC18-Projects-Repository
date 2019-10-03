@@ -7,11 +7,26 @@
 
 
 #include <xc.h>
+#include <stdint.h>
+
 #pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP
 #define _XTAL_FREQ 8000000
 
 void main(void) {
     
+    ANSELD = 0;
+    TRISD = 0;
+          
+    for(uint16_t i=0; i<200;i++)
+    {
+        for(uint8_t j=0; j<4;j++)
+        {
+            PORTD = 0x01 << j;
+            __delay_ms(100);
+        }
+    }
+    
+    while(1);
     
     return;
 }
