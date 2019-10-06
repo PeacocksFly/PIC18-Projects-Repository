@@ -13,6 +13,8 @@
 #define _XTAL_FREQ 8000000
 #define REVS 200
 
+uint8_t steps[]={0x01,0x02,0x04,0x08};
+
 void Motor_Turn(uint16_t revs);
 
 void main(void) {
@@ -20,7 +22,7 @@ void main(void) {
     ANSELD = 0;
     TRISD = 0;
       
-    Motor_Turn(REVS);  
+    Motor_Turn(REVS, );  
     __delay_ms(5000);
     Motor_Turn(REVS/4);
     __delay_ms(3000);
@@ -37,8 +39,9 @@ void Motor_Turn(uint16_t revs)
     for(uint16_t i=0; i<revs;i++)
     {
         for(uint8_t j=0; j<4;j++)
+            for(uint8_t j=3; j>=;j--)
         {
-            PORTD = 0x08 >> j;
+            PORTD = (0x01 << j);
             __delay_ms(50);
         }
     }
