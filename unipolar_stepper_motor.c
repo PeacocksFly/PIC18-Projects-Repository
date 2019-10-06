@@ -11,7 +11,7 @@
 
 #pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP
 #define _XTAL_FREQ 8000000
-#define REVS 200
+#define REVS 100
 
 void main(void) {
     
@@ -23,11 +23,11 @@ void main(void) {
         for(uint8_t j=0; j<4;j++)
         {
             PORTD = 0x01 << j;
-            __delay_ms(30);
+            __delay_ms(50);
         }
     }
     
-    while(1);
-    
+    PORTD = 0x00;
+
     return;
 }
