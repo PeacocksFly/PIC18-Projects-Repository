@@ -27,7 +27,5 @@ void main(void) {
         }
     }
     
-    PORTD = 0x00;
-
     return;
 }
