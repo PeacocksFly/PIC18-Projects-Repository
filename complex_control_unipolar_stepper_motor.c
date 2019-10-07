@@ -12,8 +12,8 @@
 #pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP
 #define _XTAL_FREQ 8000000
 #define REVS 20
-#define CLOCKWISE 1
-#define ANTICLOCKWISE -1
+#define CLOCKWISE -1
+#define ANTICLOCKWISE 1
 
 uint8_t steps[]={0x01,0x02,0x04,0x08};
 
@@ -24,11 +24,11 @@ void main(void) {
     ANSELD = 0;
     TRISD = 0;
       
-    Motor_Turn(REVS, &steps[0], CLOCKWISE);  
+    Motor_Turn(REVS, &steps[3], CLOCKWISE);  
     __delay_ms(5000);
-    Motor_Turn(REVS/4, &steps[3], ANTICLOCKWISE);
+    Motor_Turn(REVS/4, &steps[0], ANTICLOCKWISE);
     __delay_ms(3000);
-    Motor_Turn(REVS/2, &steps[0], CLOCKWISE);
+    Motor_Turn(REVS/2, &steps[3], CLOCKWISE);
     __delay_ms(1000);
     
     while(1);
