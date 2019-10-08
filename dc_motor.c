@@ -7,12 +7,9 @@
 
 
 #include <xc.h>
-#include <stdint.h>
 
 #pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP
 #define _XTAL_FREQ 8000000
-#define CLOCKWISE 1
-#define ANTICLOCKWISE -1
 
 void main(void) {
     
@@ -22,8 +19,8 @@ void main(void) {
     ANSELB = 0x00;
     TRISB = 0x03;
     
-    INTCON2bits.nRBPU = 0;
-    WPUB = 0x03;
+    INTCON2bits.nRBPU = 0;    //use of weak pull-up features on PORT B
+    WPUB = 0x03;              //weak pull-up used for RB0 and RB1
  
     while(1)
     {
