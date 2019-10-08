@@ -7,4 +7,4 @@ PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MP
 
 3. Stepper Motor Control - Simple Bipolar Motor Drive (bipolar_stepper_motor.c). A bipolar stepper motor is used and the motor is rotated 10 revolutions clockwise, delay of 5s, 10 revolutions anticlockwise and then stopped. https://youtu.be/qVl8OQfqO_Y
 
-
+4. DC Motor Control - Simple Motor Drive. The project is about controlling the direction of rotation of a DC motor. One push-button controls the direction and the other one stars/stops the motor. Weak pull-ups are used on PORT B. https://youtu.be/ZvYFq0oZyY8
