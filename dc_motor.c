@@ -16,14 +16,27 @@
 
 void main(void) {
     
-    ANSELD = 0;
-    TRISD = 0;
+    ANSELD = 0x00;
+    TRISD = 0x00;
     
-    PORTD = 0x09;
-    __delay_ms(5000);
-    PORTD = 0x06;
-    __delay_ms(5000);
+    ANSELB = 0x00;
+    TRISB = 0x03;
     
-    while(1);
+    INTCON2bits.nRBPU = 0;
+    WPUB = 0x03;
+ 
+    while(1)
+    {
+        if(!PORTBbits.RB0)
+        {
+            if(PORTBbits.RB1)
+               PORTD = 0x09;
+            else
+               PORTD = 0x06;     
+        }
+        else
+            PORTD = 0x00;
+    }
+    
     return;
 }
