@@ -14,3 +14,5 @@ PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MP
 6. Chasing Leds. Eight leds are connected to PORT C. The leds turn on alternately with one second delay interval. The leds are connected in current sourcing mode. The forward voltage/current are respectively equal to 2.2V and 10mA so the resistor was set to 280 ohms. https://youtu.be/jF1YvoOWvl0
 
 7. Random Flashing Leds. Eight leds are connected to PORT C. An integer is generated between 1 and 255 every second. Leds are turned on o indicate this number in binary. https://youtu.be/dBKmfi5_PKs
+
+8. Led Dice. Seven leds are organized such that when they turn on they indicate the number as in a real dice. The push button triggers on interrupt that calculates a random number between 1 and 6 and turn on the corresponding leds. https://youtu.be/bAST5OrHQls
