@@ -17,4 +17,4 @@ PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MP
 
 8. Led Dice. Seven leds are organized such that when they turn on they indicate the number as in a real dice. The push button triggers on interrupt that calculates a random number between 1 and 6 and turn on the corresponding leds. https://youtu.be/bAST5OrHQls
 
-9. 7-Segments Leds. A multiplexed two-digits is used to display a counter incrementing every second. Timer interrupt is used to update the counter. 
+9. 7-Segments Leds. A multiplexed two-digits is used to display a counter incrementing every second. Timer interrupt is used to update the counter. https://youtu.be/639xBpMrThg
