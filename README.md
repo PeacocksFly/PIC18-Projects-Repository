@@ -20,3 +20,5 @@ PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MP
 9. 7-Segments Leds. A multiplexed two-digits is used to display a counter incrementing every second. Timer interrupt is used to update the counter. https://youtu.be/639xBpMrThg
 
 10. Led Voltmeter. A voltmeter with a led display is designed. The voltmeter is used to measure voltages between 0-5V. The voltage to be measured is applied to an analog input, then converted into a binary number. This number is used to turn on the corresponding leds. The ADC of PIC18F45K22 is used with a 10-bit result. Polling was used to identify conversion completions. https://youtu.be/5qdQn9QUrQI
+
+11. LCD Voltmeter. A voltmeter with an LCD display is designed. The voltmeter is used to measure voltages between 0-5V. The voltage to be measured is applied to an analog input, then converted into a binary number. This number is finally displayed on a LCD screen (one digit after comma). https://youtu.be/RN32fqTV_jE
