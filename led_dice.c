@@ -13,8 +13,8 @@
 #define _XTAL_FREQ 8000000
 
 void __interrupt(low_priority) myLoIsr(void);
-int rand(void) ;
-void srand(unsigned int);
+uint16_t randN(void) ;
+void srandN(uint16_t);
 
 uint8_t dice_output[]={0x08, 0x14, 0x1C, 0x63, 0x6B, 0x77};
 uint32_t next = 1;
@@ -32,7 +32,7 @@ void main(void) {
     INTCON2bits.nRBPU = 0;        //use of weak pull-up features on PORT B
     WPUB = 0x01;
    
-    srand(5);
+    srandN(5);
     while(1){
     }
 
@@ -44,18 +44,18 @@ void __interrupt(low_priority) myLoIsr(void)
 {
     if(INTCONbits.INT0IF)
     {
-       LATC = dice_output[rand() / (RAND_MAX / 6 + 1)];      
+       LATC = dice_output[randN() / (RAND_MAX / 6 + 1)];      
        INTCONbits.INT0IF = 0;
     }
 }
 
-int rand(void)  // RAND_MAX equal to 32767
+uint16_t randN(void)  // RAND_MAX equal to 32767
 {
     next = next * 1103515245 + 12345;
-    return (unsigned int)(next/65536) % 32768;
+    return (uint16_t)(next/65536) % 32768;
 }
 
-void srand(unsigned int seed)
+void srandN(uint16_t seed)
 {
     next = seed;
 }
