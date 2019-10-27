@@ -42,3 +42,7 @@ PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MP
 20. Thermometer with an RS232 Serial Output. The LM35 sensor measures the ambient temperature and sends it out in an analog format. Using the ADC from the microcontroller, the digital signal is sent by RS232 serial communication to an external terminal that displays it (code to be cleaned before publishing the Proteus video...soon) 
 
 21. GPS with an LCD Output. A GPS signal is received on the UART interface of the microcontroller. The signal is then parsed to extract the time, longitude and latitude information. The data are then published on the LCD screen (code to be cleaned before publishing the Proteus video...soon) 
+
+22. Bluetooth Serial Communication - Slave Mode. A personal computer sends information via Bluetooth. The Bluetooth slave passes the information to the microcontroller via the UART interface and the message is diplayed on the LCD.
+
+23.
