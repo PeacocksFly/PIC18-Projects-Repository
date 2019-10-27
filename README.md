@@ -48,3 +48,5 @@ PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MP
 23. Complex SPI Bus Project. The temperature is sensed with the TC72. The data is sent by SPI protocol to the microcontroller that displays it on the LCD (code to be cleaned before publishing the Proteus video...soon) 
 
 24. Real-Time Clock Using an RTC Chip. The PCF8583 chip sends by I2C protocol the time that is then displayed on the LCD screen (code to be cleaned before publishing the Proteus video...soon) 
+
+25. Using the Ethernet-Web Browser-Based Control. An http request is received by the ENC28J60 Ethernet controller chip. The request is passed to the controller by SPI protocol. The microcontroller sends back the requested web page. On the web page two buttons can be clicked to turn on and off leds connected to the microcontroller. Unlike for the previous projects an API called "TCP/IP Light stack" developed by Microchip was used in this project. Only the Application Layer needed to be coded (code to be cleaned before publishing the Proteus video...soon) 
