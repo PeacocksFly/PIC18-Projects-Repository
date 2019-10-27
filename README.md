@@ -38,3 +38,5 @@ PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MP
 18. Reaction Timer. The project tests the reaction time of a person. A led is turned on after 3 seconds plus a random delay. Once turned on the user must push the button as quick as possible. The reaction time in milliseconds is then displayed on the LCD screen (code to be cleaned before publishing the video...soon) 
 
 19. Temperature and Relative Humidity Measurement. The ambient and temperature are measured by the SHT11 sensor chip that passes the data to the microcontroller that finally displays it on an LCD screen. The SHT11 uses its own built-in protocol as detailed in the datasheet. The CRC is also calculated (code to be cleaned before publishing the video...soon) 
+
+20. Thermometer with an RS232 Serial Output. The LM35 sensor measures the ambient temperature and sends it out in an analog format. Using the ADC from the microcontroller, the digital signal is sent by RS232 serial communication to an external terminal that displays it (code to be cleaned before publishing the video...soon) 
