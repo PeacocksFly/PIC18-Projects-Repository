@@ -43,6 +43,6 @@ PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MP
 
 21. GPS with an LCD Output. A GPS signal is received on the UART interface of the microcontroller. The signal is then parsed to extract the time, longitude and latitude information. The data are then published on the LCD screen (code to be cleaned before publishing the Proteus video...soon) 
 
-22. Bluetooth Serial Communication - Slave Mode. A personal computer sends information via Bluetooth. The Bluetooth slave passes the information to the microcontroller via the UART interface and the message is diplayed on the LCD.
+22. Bluetooth Serial Communication - Slave Mode. A personal computer sends information via Bluetooth. The Bluetooth slave passes the information to the microcontroller via the UART interface and the message is diplayed on the LCD (code to be cleaned before publishing the Proteus video...soon) 
 
-23.
+23. Complex SPI Bus Project. The temperature is sensed with the TC72. The data is sent by SPI protocol to the microcontroller that displays it on the LCD (code to be cleaned before publishing the Proteus video...soon) 
