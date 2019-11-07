@@ -35,7 +35,7 @@ PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MP
 
 17. Frequency Counter with an LCD Display. A frequency counter is designed with an LCD display. The signal to be measured is connected to the clock input T3CKI of the pic18f45k22 but configured as a counter. The counter is enabled while a timer is started for a period of 1 second. An interrupt on the 1 second timer is used to retrieve the counter value and display it on an LCD. https://youtu.be/lv5dtKKhbAw
 
-18. Reaction Timer. The project tests the reaction time of a person. A led is turned on after 3 seconds plus a random delay. Once turned on the user must push the button as quick as possible. The reaction time in milliseconds is then displayed on the LCD screen (code to be cleaned before publishing the Proteus video...soon) 
+18. Reaction Timer. The project tests the reaction time of a person. A led is turned on after a random delay between 2 and 5 seconds. Once turned on the user must push the button as quick as possible. The reaction time in milliseconds is then displayed on the LCD screen. The maximum reaction time is 8.4 seconds. The push button is serviced with an interrupt. https://youtu.be/cwPJPuvpgA4
 
 19. Temperature and Relative Humidity Measurement. The ambient and temperature are measured by the SHT11 sensor chip that passes the data to the microcontroller that finally displays it on an LCD screen. The SHT11 uses its own built-in protocol as detailed in the datasheet. The CRC is also calculated (code to be cleaned before publishing the Proteus video...soon) 
 
