@@ -7,84 +7,63 @@
 
 
 #include <xc.h>
+#include <stdint.h>
 #pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP, T3CMX = PORTB5
+
 #define _XTAL_FREQ 8000000
+#define RS LATDbits.LATD0
+#define RW LATDbits.LATD1
+#define EN LATDbits.LATD2
 
-#define RS PORTDbits.RD0
-#define RW PORTDbits.RD1
-#define EN PORTDbits.RD2
-
-void Delay_MilliSeconds(int ms);
-void LCDCommand(unsigned char cmd);
-void LCDData(unsigned char cmd);
+void WriteToLCD(uint8_t* p, uint8_t pos);
+void LCD_Command(uint8_t cmd);
+void LCD_Data(uint8_t cmd);
 void __interrupt(low_priority) myTimer(void);
+uint8_t strlen(uint8_t* s);
+void reverse(uint8_t* s);
+uint8_t* DecimalToASCII(uint8_t* ascii, uint16_t dec);
 
-unsigned int test __at(0x050);
 
-unsigned int time;
-int temp;
-int modulo;
+uint8_t text[16];                      //array for string to send to LCD
 
 void main(void) {
-    
-    ANSELC = 0;
-    ANSELD = 0;
-    ANSELA = 0;
-    
-    TRISA = 1;
-    TRISC = 0;
+     
+    TRISC = 0;                         //Port C and D as output
     TRISD = 0;
     
+    TRISB = 1;                         //Port B as input and digital enabled
     ANSELB = 0;
-    TRISB = 1;  
+      
     
-    INTCONbits.GIE = 1;
-    INTCONbits.TMR0IE = 1;
-    INTCONbits.RBIE = 0;
-    
-//    INTCONbits.INT0IE = 0;
-    
-    T0CONbits.T08BIT = 0;
-    T0CONbits.T0CS = 0;
-    T0CONbits.T0SE = 0;
-    T0CONbits.PSA = 0;
-    T0CONbits.T0PS0 = 0;
-    T0CONbits.T0PS1 = 1;
-    T0CONbits.T0PS2 = 1;
-    
-    T3CONbits.TMR3CS1 = 1;
-    T3CONbits.TMR3CS0 = 0;
-    T3CONbits.T3SOSCEN = 0;
-    T3CONbits.T3CKPS1 = 0;
-    T3CONbits.T3CKPS0 = 0;
-//  T3CONbits.NOT_T3SYNC = 0;
-    
+    INTCONbits.GIE = 1;                //general interrupt enabled
+    INTCONbits.TMR0IE = 1;             //tmr0 interrupt enabled
 
-//    T3CONbits.T3RD16 = 1;
-//    T3CONbits.nT3SYNC = 1;
-//    T3GCONbits.TMR3GE = 1;
+    T0CONbits.T08BIT = 0;              //16-bit timer configured
+    T0CONbits.T0CS = 0;                //counter disabled
+    T0CONbits.PSA = 0;                 //prescaler assigned
+    T0CONbits.T0PS = 0b110;            //prescaler set to 16
 
     
-    LCDCommand(0x0C);
-    Delay_MilliSeconds(250); 
-    EN = 0;
-           
-     
-    TMR3L=0;
-    TMR3H=0;
-    TMR0L=0xF7;
-    TMR0H=0xC2;
+    T3CONbits.T3SOSCEN = 0;            //secondary oscillator disabled
+    T3CONbits.TMR3CS = 0b10;           //T3CKI pin enabled
+    T3CONbits.T3CKPS1 = 0b00;          //prescaler = 0
+ 
+
+    EN = 0;  
+    __delay_ms(100);
+    LCD_Command(0x38);                   //LCD 2 lines, 5x7 matrix
+    __delay_ms(100);
+    LCD_Command(0x0C);                   //display on, cursor off
+    __delay_ms(5);
+    
+    WriteToLCD((uint8_t*)"Frequency", 0x80);
+    
+    TMR3=0;
+    TMR0=0xC2F7;
    
-    
     T3CONbits.TMR3ON = 1;
     T0CONbits.TMR0ON = 1;
-
-  //  INTCONbits.INT0IE = 1;
-
-    
-    while(1)
-    {
-    }
+    while(1);
     
     return;
 }
@@ -92,132 +71,89 @@ void main(void) {
 void __interrupt(low_priority) myTimer(void)
 {
 
-//Method 2
-//    if(INTCONbits.INT0IF==1)
-//    {
-//        if(T0CONbits.TMR0ON==0)
-//        {
-//
-//            
-//            T0CONbits.TMR0ON  = 1;
-//            INTCONbits.INT0IF = 0;
-//        }
-//        else
-//        {
-//            T0CONbits.TMR0ON = 0;
-//            INTCONbits.INT0IE=0;
-//            
-//            char TMRL = TMR0L;
-//            time = TMR0 ;
-//
-//            LCDCommand(0x01);
-//            Delay_MilliSeconds(250);
-//            LCDCommand(0x80);
-//            Delay_MilliSeconds(250);
-//
-//            temp =  time/1000;
-//            modulo = time%1000;
-//            LCDData(temp | 0x30);
-//            Delay_MilliSeconds(15);
-//
-//            temp = modulo/100;
-//            modulo = modulo%100;
-//            LCDData(temp | 0x30);
-//            Delay_MilliSeconds(15);
-//
-//            temp = modulo/10;
-//            modulo = modulo%10;
-//            LCDData(temp | 0x30);
-//            Delay_MilliSeconds(15);
-//
-//            LCDData(modulo | 0x30);
-//            Delay_MilliSeconds(15);
-//
-//            Delay_MilliSeconds(1000);
-//            
-//            
-//            TMR0 = 0;
-//            
-//            INTCONbits.INT0IF=0;
-//            INTCONbits.INT0IE=1;
-//            
-//            
-//
-//        
-//        }
-//    }
-  
-//Method 1
-     if(INTCONbits.TMR0IF==1)
-     {
-       
-        char TMRL = TMR3L;
-        time = TMR3 ;
-         
-        LCDCommand(0x01);
-        Delay_MilliSeconds(250);
-        LCDCommand(0x80);
-        Delay_MilliSeconds(250);
-
-        temp =  time/10000;
-        modulo = time%10000;
-        LCDData(temp | 0x30);
-        Delay_MilliSeconds(15);
+     if(INTCONbits.TMR0IF==1)                   //long interrupt latency but no impact as we do
+                                                //only wish to measure the frequency without deadline
+     { 
+        T3CONbits.TMR3ON = 0;                   //stop counter
+        T0CONbits.TMR0ON = 0;                   //stop timer
         
-        temp = modulo/1000;
-        modulo = modulo%1000;
-        LCDData(temp | 0x30);
-        Delay_MilliSeconds(15);
-
-        temp = modulo/100;
-        modulo = modulo%100;
-        LCDData(temp | 0x30);
-        Delay_MilliSeconds(15);
-
-        temp = modulo/10;
-        modulo = modulo%10;
-        LCDData(temp | 0x30);
-        Delay_MilliSeconds(15);
-
-        LCDData(modulo | 0x30);
-        Delay_MilliSeconds(15);
-         
-        
-        TMR3 = 0;
-   //     TMR3H = 0;
-        TMR0=0xC2F7;
-   //     TMR0H=0x;
+        uint16_t time = TMR3 ;                  //tmr3 is a 16-bit counter so limited to 65535 Hz
+                 
+        uint8_t* p = text;     
+        *p++ = 0x7A;                            //letter z in ascii
+        *p++ = 0x48;                            //letter H in ascii
+        *p++ = 0x20;                            //space in ascii
+         p = DecimalToASCII(p,time);            //decimal to ascii
+        *p = '\0';                              //null character        
+        reverse(text);                          //text reversed before display
+        WriteToLCD(text, 0xC0);                 //write to lcd
+             
+        TMR3 = 0;                               //counter reset
+        TMR0=0xC2F7;                            //timer reset      
 
         INTCONbits.TMR0IF=0;
+        T3CONbits.TMR3ON = 1;                   //start timer
+        T0CONbits.TMR0ON = 1;                   //start counter
 
      }
 }
 
-void LCDCommand(unsigned char cmd)
+
+uint8_t* DecimalToASCII(uint8_t* ascii, uint16_t dec)
 {
-    PORTC = cmd;
+        do{                                     
+           *ascii++ = 0x30 |(uint8_t)(dec%10);
+        }while((dec/=10) > 0);
+        
+        return ascii;
+}
+
+void WriteToLCD(uint8_t* p, uint8_t pos)
+{
+     LCD_Command(pos);
+     __delay_ms(5);
+     while(*p)
+     {
+           LCD_Data((uint8_t)*p++);
+           __delay_ms(5);
+     }
+}
+
+void LCD_Command(uint8_t cmd)
+{
+    LATC = cmd;
     RS = 0;
     RW = 0;
     EN = 1;
-    Delay_MilliSeconds(1);
+    __delay_ms(1);
     EN = 0;
-  
 }
 
-void LCDData(unsigned char cmd)
+void LCD_Data(uint8_t cmd)
 {
-    PORTC = cmd;
+    LATC = cmd;
     RS = 1;
     RW = 0;
     EN = 1;
-    Delay_MilliSeconds(1);
+    __delay_ms(1);
     EN = 0;
 }
 
-void Delay_MilliSeconds(int ms)
+uint8_t strlen(uint8_t* s)               //calculate length of an array terminated by null character    
 {
-    for(int i = 0; i< ms; i++)
+    uint8_t i = 0;    
+    while (*s++ != '\0')
+        i++;    
+    return i;
+}
+
+void reverse(uint8_t* s)                 //reverse an array of terminated by null character 
+{
+    uint8_t c, i, j;
+    for (i = 0, j = strlen(s)-1; i < j; i++, j--) 
     {
-        __delay_ms(1);
+        c = s[i];
+        s[i] = s[j];
+        s[j] = c;
     }   
 }

@@ -8,31 +8,36 @@
 
 #include <xc.h>
 #include <stdbool.h>
+#include <stdint.h>
 #pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP
-#define _XTAL_FREQ 8000000
 
-#define EN PORTEbits.RE2
-#define RW PORTEbits.RE1
-#define RS PORTEbits.RE0
+#define _XTAL_FREQ 8000000
+#define EN LATEbits.LATE2
+#define RW LATEbits.LATE1
+#define RS LATEbits.LATE0
 
 #define SCK PORTCbits.RC0
 #define DATA PORTCbits.RC1
 #define DIR_CLCK TRISCbits.RC0
 #define DIR_DATA TRISCbits.RC1
+#define CMD_TMP  0x03
+#define CMD_HUM 0x05
 
-void LCDCommand(unsigned char);
-void LCDData(unsigned char);
-void Delay_MilliSeconds(int);
-void Delay_MicroSeconds(int);
 void TransmissionStart();
 void ResetSequence();
-bool AskMeasure(char);
-int GetMeasure(bool, unsigned char );
+bool AskMeasure(uint8_t);
+uint16_t GetMeasure(bool, uint8_t );
 void ACKAcknowledge();
-bool CRCPass(char, unsigned int, unsigned char);
-void ClockingResponse(char*);
+bool CRCPass(uint8_t, uint16_t, uint8_t);
+void ClockingResponse(uint8_t*);
+void WriteToLCD(uint8_t* p, uint8_t pos);
+void LCD_Command(uint8_t cmd);
+void LCD_Data(uint8_t cmd);
+uint8_t strlen(uint8_t* s);
+void reverse(uint8_t* s);
+uint8_t* DecimalToASCII(uint8_t* ascii, uint16_t dec);
 
-const unsigned char lookUpTable[256] = {
+const uint8_t lookUpTable[256] = {                                                //CRC look up table
      0, 49, 98, 83, 196, 245, 166, 151, 185, 136, 219, 234, 125, 76, 31, 46,
      67, 114, 33, 16, 135, 182, 229, 212, 250, 203, 152, 169, 62, 15, 92, 109,
      134, 183, 228, 213, 66, 115, 32, 17, 63, 14, 93, 108, 251, 202, 153, 168,
@@ -51,233 +56,193 @@ const unsigned char lookUpTable[256] = {
      130, 179, 224, 209, 70, 119, 36, 21, 59, 10, 89, 104, 255, 206, 157, 172,
 };
 
-float output __at(0x050);
-
 void main(void) {
     
-    ANSELD = 0;
     TRISD = 0;
-    
-    ANSELE = 0;  
-    
-    TRISEbits.RE0 = 0;
-    TRISEbits.RE1 = 0;
-    TRISEbits.RE2 = 0;
-    
+    TRISE = 0; 
     ANSELC = 0;
+    
     DIR_CLCK = 0;
     SCK = 0;
     
-    unsigned char command;
-    unsigned char commandTemp = 0x03;
-    unsigned char commandHum = 0x05;
-    
- //   float humidity;
-    float temperature;
-    
-    LCDCommand(0x0C);
-    Delay_MilliSeconds(250); 
-    EN = 0;
-    
-    while(1)
-    {
-        ResetSequence();
-        TransmissionStart();
-        command = commandTemp;
-        //command = commandHum;
-        if(AskMeasure(command))
-        {   
-            while(DATA==1)
-            {
-            }
-            Delay_MicroSeconds(100);
-            unsigned int result = GetMeasure(true, command);
-            
-            if(result == 0xF000)
-            {
-               LCDCommand(0x01);
-               Delay_MilliSeconds(250);
-               LCDCommand(0x80);
-               Delay_MilliSeconds(250);
+    float output;                          //local variable to store result after conversion
+    uint16_t measure;                      //local variable to store bits sent by sensor
+    uint8_t cmd;                           //type of command needed: temp or humidity
+    uint8_t text[16];                      //array for string to send to LCD
 
-               LCDData(0x43);
-               Delay_MilliSeconds(15);
-               LCDData(0x52);
-               Delay_MilliSeconds(15);
-               LCDData(0x43); 
-               Delay_MilliSeconds(1000);
+    EN = 0;  
+    __delay_ms(100);
+    LCD_Command(0x38);                   //LCD 2 lines, 5x7 matrix
+    __delay_ms(100);
+    LCD_Command(0x0C);                   //display on, cursor off
+    __delay_ms(5);
+    
+    WriteToLCD((uint8_t*)"Temperature", 0x80);
+    
+    ResetSequence();                       //if connection is lost reset sequence is used
+   
+    while(1)
+    {  
+        TransmissionStart();                   //transmission start sequence to initiate a transmission
+        //cmd = CMD_TMP;
+        cmd = CMD_HUM;
+        if(AskMeasure(cmd))
+        {   
+            while(DATA==1);                    //sensor pulls data line down when measurement is completed
+
+            __delay_us(100);                            
+            measure = GetMeasure(true, cmd);   //retrieve the measurement
+            
+            if(measure == 0xFFFF)
+            {
+               WriteToLCD((uint8_t*)"CRC Error", 0xC0);
             }
             else              
             {
-                if(command == commandTemp)
+                output =  cmd == CMD_TMP ? -40.1f + measure * 0.01f :
+                                                      -0.0000015955f * measure * measure + 0.0367f * measure -2.0468f ;
+        
+                uint8_t* p = text;     
+                if(cmd == CMD_TMP)
                 {
-                    output = -40.1f + (result * 0.01f );
+                    *p++ = 0x43;                        //letter C in ascii 
+                    *p++ = 0x64;                        //letter d in ascii   
                 }
                 else
                 {
-                    output =  - (0.0000015955f * result * result) + (0.0367f * result) -2.0468f ;  
-                }
+                    *p++ = 0x48;                        //letter H in ascii 
+                    *p++ = 0x52;                        //letter R in ascii               
+                }                                     
+                *p++ = 0x20;                            //space in ascii
                 
-                LCDCommand(001);
-                Delay_MilliSeconds(250);
-                LCDCommand(0x80);
-                Delay_MilliSeconds(250);
-
-                unsigned int temp;
-                unsigned int modulo;
-
-                temp =  ((int) output)/1000;
-                modulo = ((int) output)%1000;
-                LCDData(temp | 0x30);
-                Delay_MilliSeconds(15);
-
-                temp =  modulo/100;
-                modulo = modulo%100;
-                LCDData(temp | 0x30);
-                Delay_MilliSeconds(15);
-
-                temp =  modulo/10;
-                modulo = modulo%10;
-                LCDData(temp | 0x30);
-                Delay_MilliSeconds(15);
-
-                LCDData(modulo | 0x30);            
-                Delay_MilliSeconds(1000);
-            
+                output *= 10;                           //to get one digit after comma
+                *p++ = 0x30 |((uint16_t)output%10);      //one digit after comma
+                output/= 10;
+                *p++ = 0x2E;                            //comma in ascii
+                 p = DecimalToASCII(p,output);          //decimal to ascii
+                *p = '\0';                              //null character        
+                reverse(text);                          //text reversed before display
+                WriteToLCD(text, 0xC0);                 //write to lcd
+                __delay_ms(2000);
             }
             
         }
         else
         {
-           LCDCommand(0x01);
-           Delay_MilliSeconds(250);
-           LCDCommand(0x80);
-           Delay_MilliSeconds(250);
-
-           LCDData(0x45);
-           Delay_MilliSeconds(15);
-           LCDData(0x52);
-           Delay_MilliSeconds(15);
-           LCDData(0x52); 
-           Delay_MilliSeconds(15);
+           WriteToLCD((uint8_t*)"Command Error", 0xC0);  //command wrongly sent  
         }
     }    
+    
     return;
 }
 
 void ResetSequence()
 {
-    DIR_DATA = 1;
-    for(char i = 0; i<10; i++)
+    DIR_DATA = 1;                            //while data line is high (line as an input and pull-up resistor)
+    for(char i = 0; i<10; i++)               //sck toggled  times
     {
         SCK = 1;
-        Delay_MicroSeconds(1);       
+        __delay_us(1);  
         SCK = 0;
-        Delay_MicroSeconds(1);
+        __delay_us(1);
     }
 }
 
 void TransmissionStart()
 {
-    DIR_DATA = 1;
-    Delay_MicroSeconds(1);
-    SCK = 0;
-    Delay_MicroSeconds(1);
+    DIR_DATA = 1;                             //data line as input to let it pull up by the resistor
+    __delay_us(1);                            //small delay (based on datasheet 0.5 us would be enough)
+                                              //but would require to implement a delay with a timer
+                                              //to ease the work we use the api on mplab
+    SCK = 0;                                  //sck line lowered to make sure it is not high from the previous
+                                              //transmission
+    __delay_us(1);
+    SCK = 1;                                  //sck high --> transmission start sequence really starts here
+    __delay_us(1);
+    DIR_DATA = 0;                             //take control of data line by making it an output
+    DATA = 0;                                 //data line lowered
+    __delay_us(1);
+    SCK = 0;                                  //toggle sck
+    __delay_us(1);
     SCK = 1;
-    Delay_MicroSeconds(1);
+    __delay_us(1);
+    DIR_DATA = 1;                             //release data line --> end of transmission sequence
+    __delay_us(1);   
+    SCK = 0;                                  //sck at 0 and data at 0 to prepare line before sending cmd
+    __delay_us(1);
     DIR_DATA = 0;
-    DATA = 0;
-    Delay_MicroSeconds(1);
-    SCK = 0;
-    Delay_MicroSeconds(1);
-    SCK = 1;
-    Delay_MicroSeconds(1);
-    DIR_DATA = 1;
-    Delay_MicroSeconds(1);   
-    SCK = 0;
-    Delay_MicroSeconds(1);
-    DIR_DATA = 0;
-    DATA = 0;
+    DATA = 0;                                 
     
-    LCDCommand(0x01);
-    Delay_MilliSeconds(250);
-    LCDCommand(0x80);
-    Delay_MilliSeconds(250);
-    
-    LCDData(0x54);
-    Delay_MilliSeconds(15);
-    LCDData(0x53);
-    Delay_MilliSeconds(15);
-    LCDData(0x20);
-    Delay_MilliSeconds(15);
-    LCDData(0x4F);
-    Delay_MilliSeconds(15);
-    LCDData(0x4B);
-    Delay_MilliSeconds(1000);
+    WriteToLCD((uint8_t*)"Trans. seq. okay", 0xC0);
+    __delay_ms(1000);
+    WriteToLCD((uint8_t*)"                ", 0xC0);
 }
 
-bool AskMeasure(char command)
+bool AskMeasure(uint8_t command)
 {
-    for(char i = 0; i<8; i++)
+    for(uint8_t i = 0; i<8; i++)
     {
-       char newBit = 0x01 & (command >> (7-i));
-       if(newBit == 0)
+       uint8_t bit_to_send = 0x01 & (command >> (7-i));  //shift command bit by bit 
+       if(!bit_to_send)                                  //if bit = 0, set the line as output and data = 0
        {
            DIR_DATA = 0;
            DATA = 0;
        }
        else
-       {
-           DIR_DATA = 1;
-       }
-       Delay_MicroSeconds(1);
-       SCK = 1;
-       Delay_MicroSeconds(1);
+           DIR_DATA = 1;                 
+       
+       __delay_us(1);
+       SCK = 1;                                          //clocking to send data line sck = 1, sck = 0
+       __delay_us(1);
        SCK = 0;
-       Delay_MicroSeconds(1);
+       __delay_us(1);
     }
     
-    DIR_DATA = 1;
-    Delay_MicroSeconds(5);
+    DIR_DATA = 1;                                        //release the data line to receive ack
+    __delay_us(5);
     
-    if(DATA == 0)
+    if(DATA == 0)                                        //if proper reception sensor pulls the line down
     {
-        SCK = 1;
-        Delay_MicroSeconds(1);
+        SCK = 1;                                         //clocking to indicate we got the ack and wait 
+        __delay_us(1);                                   //for the measurement
         SCK = 0;
-        Delay_MicroSeconds(1);
-        return true;
+        __delay_us(1);
+        return true;                                     //return the command was correctly sent
     }   
     else
     {
-       return false;    
+       return false;                                     //issue in command 
     }      
 }
 
-int GetMeasure(bool checkCRC, unsigned char command)
+uint16_t GetMeasure(bool checkCRC, uint8_t command)
 {
-     
-    char byte = 0x00;
-    unsigned int data = 0x0000;
+    uint8_t byte = 0x00;
+    uint16_t data = 0x0000;
 
-    ClockingResponse(&byte);
-    data = byte;
+    ClockingResponse(&byte);           //clock the first byte
+    data = (uint16_t)byte;             //and store it in data
     data = data << 8;
-    byte = 0x00;
-    ACKAcknowledge();
+    ACKAcknowledge();                  //send the ack
     
-    ClockingResponse(&byte);
-    data = data | byte;    
-    if(checkCRC == true)
+    byte = 0x00;                       //byte us is reset
+    ClockingResponse(&byte);           //clock the second byte
+    data = data | byte;                //and store it in data
+    if(checkCRC == true)               //CRC may be used or abandoned
+                                       //if data line ie maintained high CRC is ignored
     {
-        ACKAcknowledge();
+        ACKAcknowledge();              //by doing the ack we indicate that the crc wants to be checked
         byte = 0x00;
-        ClockingResponse(&byte);
+        ClockingResponse(&byte);       //clock the crc
         
-        if(CRCPass(byte, data, command)== false)
-        {
-            return 0xF000;
-        }
+        DIR_DATA = 1;                  //ACK acknowledge on CRC
+        __delay_us(1);
+        SCK = 1;
+        __delay_us(1);
+        SCK = 0;
+        
+        if(CRCPass(byte, data, command) == false)
+            return 0xFFFF;             //data result impossible to obtain due to MSB idle bits in all measures
     }
    
     return data;
@@ -286,79 +251,98 @@ int GetMeasure(bool checkCRC, unsigned char command)
 
 void ACKAcknowledge()
 {
-    DIR_DATA = 0;
-    DATA=0;
-    Delay_MicroSeconds(1);
+    DIR_DATA = 0;                         //to indicate sensor that one byte was received
+    DATA=0;                               //we take control of the data line and we clock it
+    __delay_us(1);
     SCK = 1;
-    Delay_MicroSeconds(1);
+    __delay_us(1);
     SCK = 0;
-    Delay_MicroSeconds(1);
-    DIR_DATA = 1;
+    __delay_us(1);
+    DIR_DATA = 1;                         //finally line is released to get the new byte
 }
 
-void ClockingResponse(char *byte)
+void ClockingResponse(uint8_t *byte)
 {
-    for(char i = 0; i<8; i++)
+    for(uint8_t i=0; i<8; i++)
     {
-            SCK = 1;
-            Delay_MicroSeconds(1);
-            if(DATA==1)
-            {
-                *byte = *byte | (0x80 >> i);
-            }              
-            SCK = 0;
-            Delay_MicroSeconds(1);
+        SCK = 1;                              //sck high plus small delay
+        __delay_us(1);
+        if(DATA==1)                           //if data is 1 the corresponding bit is modified
+            *byte = *byte | (0x80 >> i);            
+        SCK = 0;
+        __delay_us(1);
     }
 }
 
-bool CRCPass(char CRC, unsigned int data, unsigned char command)
+bool CRCPass(uint8_t CRC, uint16_t data, uint8_t command)   //CRC byte-wise calculation approach
 {
-    unsigned char reg = 0x00;  //default
-    unsigned char temp;
+    uint8_t reg = 0x00;                   //initialize crc register with lower nibble of status registed (0 by default)
+    uint8_t temp;
       
-    reg = lookUpTable[reg ^ command];
-    temp = (data >> 8);
-    reg = lookUpTable[reg ^ temp];
-    temp = data;
-    reg = lookUpTable[reg ^ temp];
-    
-    return (CRC == reg)? true : false;
-    
+    reg = lookUpTable[reg ^ command];     //XOR command and register and take the value in look up table
+    temp = (uint8_t)(data >> 8);          //MSB byte of response
+    reg = lookUpTable[reg ^ temp];        //XOR MSB and register and take the value in look up table
+    temp = (uint8_t)data;                 //LSB byte of response
+    reg = lookUpTable[reg ^ temp];        //XOR LSB and register and take the value in look up table
+                                          //error in datasheet Reg nibbles must not be reversed
+    return (CRC == reg)? true : false;   
 }
 
-void LCDCommand(unsigned char cmd)
+uint8_t* DecimalToASCII(uint8_t* ascii, uint16_t dec)
 {
-    PORTD = cmd;
+        do{                                     
+           *ascii++ = 0x30 |(uint8_t)(dec%10);
+        }while((dec/=10) > 0);
+        
+        return ascii;
+}
+
+void WriteToLCD(uint8_t* p, uint8_t pos)
+{
+     LCD_Command(pos);
+     __delay_ms(5);
+     while(*p)
+     {
+           LCD_Data((uint8_t)*p++);
+           __delay_ms(5);
+     }
+}
+
+void LCD_Command(uint8_t cmd)
+{
+    LATD = cmd;
     RS = 0;
     RW = 0;
     EN = 1;
-    Delay_MilliSeconds(1);
+    __delay_ms(1);
     EN = 0;
-  
 }
 
-void LCDData(unsigned char cmd)
+void LCD_Data(uint8_t cmd)
 {
-    PORTD = cmd;
+    LATD = cmd;
     RS = 1;
     RW = 0;
     EN = 1;
-    Delay_MilliSeconds(1);
+    __delay_ms(1);
     EN = 0;
 }
 
-void Delay_MilliSeconds(int ms)
+uint8_t strlen(uint8_t* s)               //calculate length of an array terminated by null character    
 {
-    for(int i = 0; i< ms; i++)
-    {
-        __delay_ms(1);
-    }   
+    uint8_t i = 0;    
+    while (*s++ != '\0')
+        i++;    
+    return i;
 }
 
-void Delay_MicroSeconds(int us)
+void reverse(uint8_t* s)                 //reverse an array of terminated by null character 
 {
-    for(int i = 0; i< us; i++)
+    uint8_t c, i, j;
+    for (i = 0, j = strlen(s)-1; i < j; i++, j--) 
     {
-        __delay_us(1);
+        c = s[i];
+        s[i] = s[j];
+        s[j] = c;
     }   
 }
