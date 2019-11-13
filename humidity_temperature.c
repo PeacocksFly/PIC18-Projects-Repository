@@ -123,7 +123,7 @@ void main(void) {
                 *p = '\0';                              //null character        
                 reverse(text);                          //text reversed before display
                 WriteToLCD(text, 0xC0);                 //write to lcd
-                __delay_ms(100);
+                __delay_ms(2000);
             }
             
         }
