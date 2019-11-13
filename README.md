@@ -1,5 +1,5 @@
 # PIC18-Projects-Repository
-PIC microcontroller projects from Dogan Ibrahim's book implemented in C using MPLAB X IDE and Proteus
+PIC microcontroller projects from Dogan Ibrahim's book "PIC Microcontroller Projects in C - Basic to Advanced" implemented in C using MPLAB X IDE and tested on the virtual simulator Proteus. The microcontroller used in all projects is the PIC18F45K22 except for the project 25 "web browser" for which the PIC18F46K22 was used due to memory constraints. No external library was used in these projects except for the project 25 for which the TCP/IP light stack from MPLAB was necessary. All programs are original (not taken from the book).
 
 1. Stepper Motor Control - Simple Unipolar Drive (unipolar_stepper_motor.c). A unipolar stepper motor is used and the motor is rotated 100 turns before it is then stopped. https://youtu.be/mTZW4wvh8Gs
 
