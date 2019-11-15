@@ -41,7 +41,7 @@ PIC microcontroller projects from Dogan Ibrahim's book "PIC Microcontroller Proj
 
 20. Thermometer with an RS232 Serial Output. The LM35DZ sensor measures the ambient temperature and sends it out in an analog format. Using the ADC provided by the microcontroller, the measure is transformed into a binary format and sent by the serial port to an external terminal that displays it. The baud rate is set to 9600 bps. A new conversion is signaled through an interrupt. https://youtu.be/PCHEQIP8M8w
 
-21. GPS with an LCD Output. A GPS signal is received on the UART interface of the microcontroller. The signal is then parsed to extract the time, longitude and latitude information. The data are then published on the LCD screen (code to be cleaned before publishing the Proteus video...soon) 
+21. GPS with an LCD Output. GPS NMEA data are received on the UART interface of the microcontroller. The signal is then parsed to extract the time, longitude and latitude information. The data are then displayed on an LCD screen. An interrupt is triggered every time a new character is received on the UART. Since parsing the information (identify the commas, adding some separators, etc.) and displaying on the LCD is faster than the baud rate, no data is lost even though the whole information processing is performed during the interrupt. The NMEA frames are also displayed on a virtual terminal to verify the data displayed on the LCD is correct. https://youtu.be/XXVgsij1x1M
 
 22. Bluetooth Serial Communication - Slave Mode. A personal computer sends information via Bluetooth. The Bluetooth slave passes the information to the microcontroller via the UART interface and the message is diplayed on the LCD (code to be cleaned before publishing the Proteus video...soon) 
 
