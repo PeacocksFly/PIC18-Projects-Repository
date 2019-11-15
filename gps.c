@@ -8,307 +8,162 @@
 
 #include <xc.h>
 #include <stdbool.h>
+#include <stdint.h>
+
 #pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP
 #define _XTAL_FREQ 8000000
 
-void Delay_MilliSeconds(int ms);
-void Delay_MicroSeconds(int us);
-void LCDCommand(unsigned char cmd);
-void LCDData(unsigned char cmd);
-void WriteToLCD(const char tab[]);
-void Parse(char*,  char*,  char*);
+
+void LCD_Data(uint8_t cmd);
+void LCD_Command(uint8_t cmd);
+void WriteToLCD(uint8_t* p, uint8_t pos);
 void __interrupt(low_priority) UARTInterrupt(void);
 
-#define RS PORTEbits.RE0
-#define RW PORTEbits.RE1
-#define EN PORTEbits.RE2
+#define RS LATEbits.LATE0
+#define RW LATEbits.LATE1
+#define EN LATEbits.LATE2
 
-char GPRMCInfo[82];
-char *p;
-bool searchDelimiter = true;
-bool fillingTab = false;
-bool fullTab = false;
+const uint8_t GPRMC[] = "$GPGGA" ;
+uint8_t received_byte ;
 
 void main(void) {
     
-    ANSELD = 0;
-    TRISD = 0;
+
+    TRISD = 0;                          //Port D as an output
     
-    ANSELC = 0;
-    TRISCbits.RC6 = 0;
-    TRISCbits.RC7 = 1;
+    ANSELC = 0;                         //digital input enabled
+    TRISCbits.RC7 = 1;                  //RC7 as an input
     
-    ANSELE = 0;
     TRISEbits.RE0 = 0;
     TRISEbits.RE1 = 0;
     TRISEbits.RE2 = 0;
     
-    INTCONbits.GIE = 1;
-    INTCONbits.PEIE = 1;
-    PIE1bits.RC1IE = 1;
-    
-    SPBRG1 = 0x0C;
-    TXSTA1bits.TX9 = 0;
-    TXSTA1bits.TXEN = 1;      
-    TXSTA1bits.SYNC = 0;
-    TXSTA1bits.BRGH = 0;
-    
-    RCSTA1bits.SPEN = 1;
-    RCSTA1bits.RX9 = 0;
-    RCSTA1bits.CREN = 1;
-    
-    LCDCommand(0x0C);
-    Delay_MilliSeconds(250); 
-    LCDCommand(0x38);
-    Delay_MilliSeconds(250);
-    EN = 0;
-    
-    char time[8];
-    char longitude[10];
-    char latitude[10];
-    
-    while(1)
-    {       
-        while(!fullTab)
-        {}
-        
-        Parse(time, longitude, latitude);
-        
-        LCDCommand(0x01);
-        Delay_MilliSeconds(250);
-        
-        LCDCommand(0x80);
-        Delay_MilliSeconds(250);
-        WriteToLCD("GPS Position");
-        Delay_MilliSeconds(15);
-        
-        //GPS
-               
-        LCDCommand(0xC0);
-        Delay_MilliSeconds(250);
-        WriteToLCD("Time: ");
-        Delay_MilliSeconds(15);
-        WriteToLCD(time);
-        Delay_MilliSeconds(15);
-        //Time
-        
-        LCDCommand(0x90);
-        Delay_MilliSeconds(250);
-        WriteToLCD("Long: ");
-        Delay_MilliSeconds(15);
-        WriteToLCD(longitude);
-        Delay_MilliSeconds(15);
-        //Longitude
-    
-        LCDCommand(0xD0);
-        Delay_MilliSeconds(250); 
-        WriteToLCD("Lat: ");
-        Delay_MilliSeconds(15);
-        WriteToLCD(latitude);
-        Delay_MilliSeconds(100);
-        //Latitude
+    //RS232 configuration
+    RCSTA1bits.SPEN = 1;                 //serial port enabled
+    RCSTA1bits.RX9 = 0;                  //9-bits reception disabled
+    RCSTA1bits.CREN = 1;                 //async mode received enabled
+    TXSTA1bits.SYNC = 0;                 //EUSART asynchronous mode selected
+    BAUDCON1bits.BRG16 = 0;              //8-bit baud rate generator
+    SPBRG1 = 0x0C;                       //baud rate = 9600
+    TXSTA1bits.BRGH = 0;                 //baud rate low speed (speed not doubled)
 
-        searchDelimiter = true;
-        fullTab = false;     
-        fillingTab = false;
-    }
     
-            
+    INTCONbits.GIE = 1;                  //general interrupt enabled         
+    INTCONbits.PEIE = 1;                 //peripheral interrupt enabled
+    PIE1bits.RC1IE = 1;                  //RX1 enabled
+    
+    EN = 0;  
+    __delay_ms(100);
+    LCD_Command(0x38);                   //LCD 2 lines, 5x7 matrix
+    __delay_ms(100);
+    LCD_Command(0x0C);                   //display on, cursor off
+    __delay_ms(100);
+    
+    WriteToLCD((uint8_t*)"GPS Position", 0x80);
+    WriteToLCD((uint8_t*)"UTC:", 0xC0);
+    WriteToLCD((uint8_t*)"Lon:", 0x90);
+    WriteToLCD((uint8_t*)"Lat:", 0xD0);   
+
+    while(1);
+             
     return;
 }
 
-void Parse(char* time, char* longitude, char* latitude)
-{
-   
-    //Time
-    char index = 0;
-    char cnt = 0;
-    while(GPRMCInfo[index++] != 0x2C);
-    
-    while(GPRMCInfo[index] !=0x2C)
-    {
-        if(GPRMCInfo[index] ==0x2E)
-        {
-            while(GPRMCInfo[index++] != 0x2C);
-            break;
-        }
-        *time++ = GPRMCInfo[index++];
-        cnt++;
-        if(cnt==2)
-        {
-            *time++ = 0x3A;
-            cnt = 0;
-        }
-    }
-    *--time = ' ';
-    
-    //Longitude
-    while(GPRMCInfo[index++] != 0x2C);
-    
-    cnt = 0;
-    while(GPRMCInfo[index] != 0x2C)
-    {
-        if(cnt<6)
-        {
-            if(GPRMCInfo[index] != 0x2E)
-            {
-                *longitude++ = GPRMCInfo[index];
-                 cnt++;
-                 if(cnt==2)
-                 {
-                     *longitude++ = 0x64;
-                 }
-                 if(cnt==4)
-                 {
-                     *longitude++ = 0x2E;
-                 }
-             }       
-        }
-        index++;
-    }
-    index++;
-    
-    while(GPRMCInfo[index] != 0x2C)
-    {
-        *longitude++ = GPRMCInfo[index++];
-    }
-    index++;  
-    
-    //Latitude
-    cnt = 0;
-    while(GPRMCInfo[index] != 0x2C)
-    {
-        if(cnt<6)
-        {
-            if(GPRMCInfo[index] != 0x2E)
-            {
-                *latitude++ = GPRMCInfo[index];
-                 cnt++;
-                 if(cnt==3)
-                 {
-                     *latitude++ = 0x64;
-                 }
-                 if(cnt==5)
-                 {
-                     *latitude++ = 0x2E;
-                 }
-             }           
-        } 
-        index++;
-    }
-    index++;   
-    while(GPRMCInfo[index] != 0x2C)
-    {
-        *latitude = GPRMCInfo[index++];
-    }
-   
-}
 
-
-void __interrupt(low_priority) UARTInterrupt(void)
-{
-      if(PIR1bits.RC1IF == 1)
+void __interrupt(low_priority) UARTInterrupt(void)          //give 9600 bps, one byte received every 1.04 ms
+{                                                           //displaying one character takes less around 60 us
+                                                            //so that despite the interrupt overhead and the parsing
+                                                            //if else sequence it is possible to display characters
+                                                            //directly on lcd instead of storing them in an array
+                                                            //and then parse them what would have caused missing
+                                                            //some characters    
+      static uint8_t index = 0;
+      static uint8_t comma_counter = 0;
+      static uint8_t character_pos = 0;
+  
+      if(PIR1bits.RC1IF)
       {
-         char byte = RCREG1; 
-         
-         if(searchDelimiter)
-         {
-             if(byte == 0x24)
-             {
-                 p = &GPRMCInfo[0];
-                 *p = byte;
-                 searchDelimiter = false;
-                 p++;
-             }            
-         }
-         else
-         {
-             if(!fullTab)
-             {
-                 *p = byte;
-                 if(!fillingTab)
-                 {
-                     if(p == &GPRMCInfo[5])
-                     {
-                             if(GPRMCInfo[0]== 0x24 &&
-                                GPRMCInfo[1]== 0x47 &&
-                                GPRMCInfo[2]== 0x50 &&
-                                GPRMCInfo[3]== 0x52 &&
-                                GPRMCInfo[4]== 0x4D &&
-                                GPRMCInfo[5]== 0x43)
-                             {
-                                  fillingTab = true;
-                                  p++;
-                             }
-                             else
-                             {
-                                  searchDelimiter = true;
-                             }
-                     }
-                     else
-                     {
-                         p++;
-                     }
-                 }
-                 else
-                 {   
-                     if(byte == 0x0D)
-                     {
-                         fullTab = true;
-                     }
-                     p++;
-                 }                 
-             } 
-         }
+          received_byte = RCREG1;
+
+          if(index < 6)                                     //identify the sequence $GPGGA from NMEA frame
+          {
+              index = GPRMC[index] == received_byte ?  ++index : 0;
+          }
+          else
+          {
+              if(received_byte == 0x2C)                     //then parse using the commas
+              {
+                  ++comma_counter;
+                  character_pos = 0;
+              }
+              
+              if(comma_counter==1 &&  character_pos > 0  && character_pos < 9)
+              {                                             //first comma is the time
+                  WriteToLCD(&received_byte, 0xC3 + character_pos);
+                  if(character_pos == 2 || character_pos == 5)
+                      WriteToLCD((uint8_t*)":", 0xC3 + ++character_pos);
+              }
+              else if((comma_counter== 2 &&  character_pos > 0))
+              {                                             //second comma the longitude degree and minutes
+                  WriteToLCD(&received_byte, 0x93 + character_pos);
+                  if(character_pos == 2)
+                      WriteToLCD((uint8_t*)"d", 0x93 + ++character_pos);          
+              }
+              else if((comma_counter== 3 &&  character_pos > 0))
+              {                                             //third comma is the longitude north or south
+                  WriteToLCD(&received_byte, 0x9F);           
+              }
+              else if((comma_counter==4 &&  character_pos > 0))
+              {                                             //fourth comma is the latitude degree and minutes
+                  WriteToLCD(&received_byte, 0xD3 + character_pos);
+                  if(character_pos == 3)
+                      WriteToLCD((uint8_t*)"d", 0xD3 + ++character_pos);       
+              }
+              else if((comma_counter== 5 &&  character_pos > 0))
+              {                                             //fifth comma is the latitude west or east
+                  WriteToLCD(&received_byte, 0xDF);           
+              }
+              
+              character_pos++;
+              
+              if(comma_counter == 6)                        //reset the sequence
+              {
+                  comma_counter = 0;
+                  index = 0;
+              }
+          }
       }
 }
 
-
-void WriteToLCD(const char tab[])
+void WriteToLCD(uint8_t* p, uint8_t pos)
 {
-    while(*tab!='\0')
-    {
-        LCDData(*tab);
-        Delay_MilliSeconds(15);
-        tab++;
-    }
-
+     LCD_Command(pos);
+     __delay_us(25);
+     while(*p)
+     {
+           LCD_Data((uint8_t)*p++);
+           __delay_us(25);
+     }
 }
 
 
-void LCDCommand(unsigned char cmd)
+void LCD_Command(uint8_t cmd)
 {
-    PORTD = cmd;
+    LATD = cmd;
     RS = 0;
     RW = 0;
     EN = 1;
-    Delay_MilliSeconds(1);
+    __delay_us(1);
     EN = 0;
-  
 }
 
-void LCDData(unsigned char cmd)
+void LCD_Data(uint8_t cmd)
 {
-    PORTD = cmd;
+    LATD = cmd;
     RS = 1;
     RW = 0;
     EN = 1;
-    Delay_MilliSeconds(1);
+    __delay_us(1);
     EN = 0;
 }
 
-void Delay_MilliSeconds(int ms)
-{
-    for(int i = 0; i< ms; i++)
-    {
-        __delay_ms(1);
-    }   
-}
-
-void Delay_MicroSeconds(int us)
-{
-    for(int i = 0; i< us; i++)
-    {
-        __delay_us(1);
-    }   
-}
