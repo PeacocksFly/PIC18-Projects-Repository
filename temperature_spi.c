@@ -7,27 +7,22 @@
 
 
 #include <xc.h>
-#include <pic18f45k22.h>
+#include<stdint.h>
 #pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP
+
+void LCDCommand(uint8_t cmd);
+void LCDData(uint8_t cmd);
+void writeToLCD(uint8_t* p, uint8_t pos);
+void writeToSensor(const uint8_t, const uint8_t);
+void readFromSensor(const uint8_t, int8_t*);
+void ASCIIConversion(float, uint8_t*);
+uint8_t strlen(uint8_t* s);
+void reverse(uint8_t* s);
+
 #define _XTAL_FREQ 8000000
-
-
-void delay_milliseconds(unsigned int);
-void delay_microseconds(unsigned int);
-void LCDCommand(unsigned char);
-void LCDData(unsigned char);
-void writetosensor(const unsigned char, const unsigned char);
-void readfromsensor(const unsigned char, char*);
-float tempconversion(const char*);
-void ASCIIconversion(float, char*, const int);
-void LCDdisplay(char*);
-int power(const int, int);
-int strlen(char []);
-void reverse(char []);
-
-#define RS PORTEbits.RE0
-#define RW PORTEbits.RE1
-#define EN PORTEbits.RE2
+#define RS LATEbits.LATE0
+#define RW LATEbits.LATE1
+#define EN LATEbits.LATE2
 
 #define CE PORTCbits.RC2
 #define CK PORTCbits.RC3
@@ -42,226 +37,166 @@ void reverse(char []);
 
 void main(void) {
     
-    ANSELE = 0;
-    TRISE = 0;
-    
-    ANSELD = 0;
+    TRISE = 0;                         //Port E and D as output
     TRISD = 0;
     
-    ANSELC = 0;
     TRISCbits.RC2 = 0;
     TRISCbits.RC3 = 0;
-    TRISCbits.RC4 = 1;
+    TRISCbits.RC4 = 1;                 //SDI as an input while other spi pins as output
     TRISCbits.RC5 = 0;
+    ANSELC = 0;                        //digital enabled
+      
+    //SPI configuration
+    SSP1CON1bits.SSPM=0b0000;          //SPI Master mode, clock = FOSC/4
+    SSP1CON1bits.SSPEN = 1;            //SPI pins enabled
+    SSP1STATbits.SMP = 0;              //Input data sampled at middle of data output time  
+    SSP1STATbits.CKE = 0;              //Transmit occurs on transition from Idle to active clock state
     
-    SSP1CON1bits.SSPEN = 1;
-    SSP1CON1bits.SSPM3=0;
-    SSP1CON1bits.SSPM2=0;
-    SSP1CON1bits.SSPM1=0;
-    SSP1CON1bits.SSPM0=0;
-    SSP1STATbits.SMP = 0;
-    SSP1STATbits.CKE = 0;
-    
-    LCDCommand(0x0C);
-    delay_milliseconds(250); 
-    EN = 0;
+    EN = 0;  
+    __delay_ms(100);
+    LCDCommand(0x38);                   //LCD 2 lines, 5x7 matrix
+    __delay_ms(100);
+    LCDCommand(0x0C);                   //display on, cursor off
+    __delay_ms(5);
+       
+    writeToLCD((uint8_t*)"Temperature TC72", 0x80);
       
     CE = 0;
-    char readings[3];//={0x19, 0x00, 0x00};
+    int8_t readings[3];                                    //array to store MSB, LSB and control register
     float temperature;
-    char ASCIItab[8];
+    uint8_t text[16];
     
     while(1)
     {
-       writetosensor(ADR_CTRL_WRITE, 0x04);       
-       delay_milliseconds(150);
-       readfromsensor(ADR_TEMP_MSB, &readings[0]);
+       writeToSensor(ADR_CTRL_WRITE, 0x04);                 //write to the control register to clear the shutdown bit.
+                                                            //continuous temperature conversion mode
+       __delay_ms(150);                                     //conversion performed every 150 ms
+       readFromSensor(ADR_TEMP_MSB, &readings[0]);          //3-bytes readings when the MSB address is written to the sensor
+                                                            //the sensor automatically the lower addresses, i.e. LSB and control register
+               
+       temperature = (float)readings[0] + (readings[1] >> 6) * 0.25f;
+                                                            //data is received in two bytes MSB and LSB
+       ASCIIConversion(temperature, text);                  //conversion in ascii characters
+       writeToLCD((uint8_t*)&text[0], 0xC0);                //display on LCD
        
-       LCDCommand(0x01);
-       delay_milliseconds(250);
-       LCDCommand(0x80);
-       delay_milliseconds(250);
-       
-       temperature = tempconversion(&readings[0]);
-       ASCIIconversion(temperature, &ASCIItab[0], 2);
-   
-       LCDdisplay(&ASCIItab[0]);
-       
-       delay_milliseconds(500);
-    }
-            
+       __delay_ms(1000);
+       writeToLCD((uint8_t*)"           ", 0xC0);      
+    }           
     return;
 }
 
-
-void ASCIIconversion(float tmp, char* ASCIItab, const int resolution)
+void writeToSensor(const uint8_t adr, const uint8_t ctrlreg)
 {
-    char* starttab = ASCIItab;
-
-    char sign = 0;
-    if(tmp < 0)
-    {       
-       tmp = -tmp;
-       sign = 1;
-    }
+    CE = 1;
+       
+    SSP1BUF = adr;                           //write address of the control register
+    while(!SSP1STATbits.BF);                 //wait for full status bit to be set
+    SSP1BUF = ctrlreg;    
+    while(!SSP1STATbits.BF);       
     
-    int integer = (int)(tmp * (float)power(10, resolution));
-         
-    for(int p=resolution; p>0;--p)
-    {
-       *ASCIItab++ = (0x30 | integer%10);  
-       integer=integer/10;
-    }
-    
-    *ASCIItab++ = 0x2E;
-
-    do
-    {
-        *ASCIItab++=(0x30 |integer%10);    
-    }while((integer=integer/10) > 0);
-        
-    if(sign==1)
-    {
-       *ASCIItab++ = 0x2D;
-    }
-    
-    *ASCIItab = '\0';
-    
-    reverse(starttab);
-    
+    CE = 0;
 }
 
 
-
-int strlen(char s[])
+void readFromSensor(const uint8_t adr, int8_t* readings)
 {
-    int i;
-    i = 0;
+    CE = 1;
+        
+    SSP1BUF = adr;                          //read address of MSB temperature
+    while(!SSP1STATbits.BF);
     
-    while (s[i] != '\0')
+    for(uint8_t i=0; i<3; i++)              //3-bytes data packet
     {
-        i++;
+        SSP1BUF = 0xAA;                     //to clock in the temperature data a dummy byte put into the spi buffer
+        while(!SSP1STATbits.BF);
+        *readings++ = SSP1BUF; 
     }
-      
+    
+    CE = 0;     
+}
+
+void ASCIIConversion(float temp, uint8_t* p)
+{
+    uint8_t* start = p;
+    int8_t sign = 1;
+    uint16_t tmp;
+    
+    if(temp < 0)
+    {
+        sign = -1;
+        temp = -temp;
+    }
+    
+    tmp = (uint16_t)(temp * 100.0f);
+    
+    *p++ = 0x64;                            //letter d in ascii
+    *p++ = 0x20;                            //space in ascii
+    
+    for(uint8_t i=0; i<2;i++)
+    {
+        *p++ = 0x30 |(uint8_t)(tmp%10);      //two digits after comma
+        tmp/= 10;   
+    }
+    
+    *p++ = 0x2E;                            //comma in ascii 
+    do{                                     //digits before comma
+       *p++ = 0x30 |(uint8_t)(tmp%10);
+    }while((tmp/=10) > 0);
+
+    if(sign == -1)                      
+        *p++ = 0x2D;                        //sign in ascii
+    
+    *p = '\0'; 
+    reverse(start);
+    
+}
+
+void writeToLCD(uint8_t* p, uint8_t pos)
+{
+     LCDCommand(pos);
+     __delay_ms(5);
+     while(*p)
+     {
+           LCDData((uint8_t)*p++);
+           __delay_ms(5);
+     }
+}
+
+void LCDCommand(uint8_t cmd)
+{
+    LATD = cmd;
+    RS = 0;
+    RW = 0;
+    EN = 1;
+    __delay_us(1);
+    EN = 0;
+}
+
+void LCDData(uint8_t cmd)
+{
+    LATD = cmd;
+    RS = 1;
+    RW = 0;
+    EN = 1;
+    __delay_us(1);
+    EN = 0;
+}
+
+uint8_t strlen(uint8_t* s)               //calculate length of an array terminated by null character    
+{
+    uint8_t i = 0;    
+    while (*s++ != '\0')
+        i++;    
     return i;
 }
 
-
-
-void reverse(char s[])
+void reverse(uint8_t* s)                 //reverse an array of terminated by null character 
 {
-    int c, i, j;
+    uint8_t c, i, j;
     for (i = 0, j = strlen(s)-1; i < j; i++, j--) 
     {
         c = s[i];
         s[i] = s[j];
         s[j] = c;
     }   
-}
-
-
-void LCDdisplay(char* temp)
-{
-    do
-    {
-        LCDData(*temp);
-        delay_milliseconds(15);
-    }while(*temp++ != '\0');    
-}
-
-int power(const int bas, int n)
-{
-    int p;
-    for(p = 1; n>0; --n)
-    {
-        p = p * bas;
-    }        
-    return p;
-}
-
-
-float tempconversion(const char* readings)
-{
-    float temp;
-    
-    if((*readings & 0x80) == 0x80)
-    {
-       temp = -(1.0 + (char)~*readings++) ;
-    }
-    else
-    {
-       temp = *readings++;
-    }
-
-    temp = temp + (*readings >> 6) * 0.25;
-
-    return temp;
-}
-
-
-void writetosensor(const unsigned char adr, const unsigned char ctrlreg)
-{
-    CE = 1;
-       
-    SSP1BUF = adr;
-    while(SSP1STATbits.BF == 0);
-    SSP1BUF = ctrlreg;    
-    while(SSP1STATbits.BF == 0);       
-    
-    CE = 0;
-}
-
-
-void readfromsensor(const unsigned char adr, char* readings)
-{
-    CE = 1;
-       
-    SSP1BUF = adr;
-    while(SSP1STATbits.BF == 0);
-    
-    for(unsigned char i=0; i<3; i++)
-    {
-        SSP1BUF = 0xAA;     //dummy
-        while(SSP1STATbits.BF == 0);
-        *readings++ = SSP1BUF;
-    }
-    
-    CE = 0;     
-}
-
-
-void LCDCommand(unsigned char cmd)
-{
-    PORTD = cmd;
-    RS = 0;
-    RW = 0;
-    EN = 1;
-    delay_milliseconds(1);
-    EN = 0;
-}
-
-void LCDData(unsigned char cmd)
-{
-    PORTD = cmd;
-    RS = 1;
-    RW = 0;
-    EN = 1;
-    delay_milliseconds(1);
-    EN = 0;
-}
-
-void delay_milliseconds(unsigned int ms)
-{
-    for(unsigned int i=0; i<ms; i++)
-    {
-        __delay_ms(1);
-    }
-}
-
-void delay_microseconds(unsigned int us)
-{
-    for(unsigned int i=0; i<us; i++)
-    {
-        __delay_us(1);
-    }
 }
