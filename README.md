@@ -45,7 +45,7 @@ PIC microcontroller projects from Dogan Ibrahim's book "PIC Microcontroller Proj
 
 22. Bluetooth Serial Communication - Slave Mode. A personal computer sends information via Bluetooth. The Bluetooth slave passes the information to the microcontroller via the UART interface and the message is diplayed on the LCD (code to be cleaned before publishing the Proteus video...soon) 
 
-23. Complex SPI Bus Project. The temperature is sensed with the TC72. The data is sent by SPI protocol to the microcontroller that displays it on the LCD (code to be cleaned before publishing the Proteus video...soon) 
+23. Complex SPI Bus Project. The temperature is sensed from the chip TC72 by Microchip. The data is sent by SPI protocol to the microcontroller. The data is provided in a 3-bytes format to be then converted in ASCII characters and sent to an LCD. https://youtu.be/CSQTKhh9Qic
 
 24. Real-Time Clock Using an RTC Chip. The PCF8583 chip sends by I2C protocol the time that is then displayed on the LCD screen (code to be cleaned before publishing the Proteus video...soon) 
 
