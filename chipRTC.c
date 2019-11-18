@@ -65,7 +65,7 @@ void main(void) {
     INTCONbits.INT0IE = 1;                  //interrupt on RB0 enabled
     INTCON3bits.INT1IE = 1;                 //interrupt on RB1 enabled
     INTCON3bits.INT2IE = 1;                 //interrupt on RB2 enabled
-    
+    PIR1bits.SSP1IF = 0;                    //reset MSSP interrupt flag bit
     
     INTCONbits.RBIF = 0;                    //RBIF reset
     INTCONbits.INT0IF = 0;                  //interrupt flag on RB0 reset
@@ -232,74 +232,78 @@ void displayTime(void)
 
 uint8_t readByte(void)
 {
-    uint8_t recbyte;
+    uint8_t recbyte; 
     
-    PIR1bits.SSP1IF = 0;               //reset MSSP interrupt flag bit
     SSP1CON2bits.RCEN = 1;             //set receive enable bit to indicate a reception operation
     while(!PIR1bits.SSP1IF);           //wait for MSSP interrupt flag bit to indicate one byte received
-    recbyte = SSP1BUF;                 
-    
-    PIR1bits.SSP1IF = 0;
+    PIR1bits.SSP1IF = 0;               //reset MSSP interrupt flag bit
+    recbyte = SSP1BUF;  
+      
     SSP1CON2bits.ACKDT = 0;            //ACK to be sent to slave
     SSP1CON2bits.ACKEN = 1;            //ACK initiation
     while(!PIR1bits.SSP1IF);
+    PIR1bits.SSP1IF = 0;
     
     return recbyte;
 }
 
 void readInit(void)
-{  
-    PIR1bits.SSP1IF = 0;                //reset MSSP interrupt flag bit
+{   
     SSP1BUF = SLAVE_ADR_READ ;          //slave address to receive from
     while(!PIR1bits.SSP1IF);            //MSSP interrupt flag bit set by hardware after 9th clock
+    PIR1bits.SSP1IF = 0;                //reset MSSP interrupt flag bit
     if(SSP1CON2bits.ACKSTAT)
         writeToLCD((uint8_t*)"Acknowledgement failed", 0xC0);
 }
 
 void stopI2C(void)
 {
-    PIR1bits.SSP1IF = 0;                //clear MSSP interrupt flag bit     
+    
     SSP1STATbits.P = 0;                 //reset stop bit
     SSP1CON2bits.PEN = 1;               //initiate a stop condition
     while(!PIR1bits.SSP1IF);            //MSSP interrupt flag bit set by hardware following a stop condition completion 
+    PIR1bits.SSP1IF = 0;                //clear MSSP interrupt flag bit     
     if(!SSP1STATbits.P)
         writeToLCD((uint8_t*)"Stop condition error", 0xC0);  
 }
 
 void startI2C(void)
 {
-    PIR1bits.SSP1IF = 0;                //clear MSSP interrupt flag bit
+    
     SSP1STATbits.S = 0;                 //reset start bit
     SSP1CON2bits.SEN = 1;               //initiate a start condition
     while(!PIR1bits.SSP1IF);            //MSSP interrupt flag bit set by hardware following a start condition completion 
+    PIR1bits.SSP1IF = 0;                //clear MSSP interrupt flag bit
     if(!SSP1STATbits.S)
         writeToLCD((uint8_t*)"Start condition error", 0xC0);
 }
 
 void repeatStartI2C(void)
 { 
-    PIR1bits.SSP1IF = 0;                //clear MSSP interrupt flag bit
+    
     SSP1STATbits.S = 0;                 //reset start bit
-    SSP1CON2bits.RSEN = 1;              //initiate a restart condition
+    SSP1CON2bits.RSEN = 1;              //initiate a restart condition  
     while(!PIR1bits.SSP1IF);            //MSSP interrupt flag bit set by hardware following a start condition completion  
+    PIR1bits.SSP1IF = 0;                //clear MSSP interrupt flag bit
     if(!SSP1STATbits.S)
         writeToLCD((uint8_t*)"Restart condition error", 0xC0);
 }
 
 void writeInit(void)
-{  
-    PIR1bits.SSP1IF = 0;                //reset MSSP interrupt flag bit
+{   
     SSP1BUF = SLAVE_ADR_WRITE;          //slave address to transmit
     while(!PIR1bits.SSP1IF);            //MSSP interrupt flag bit set by hardware after 9th clock
+    PIR1bits.SSP1IF = 0;                //reset MSSP interrupt flag bit
     if(SSP1CON2bits.ACKSTAT)
         writeToLCD((uint8_t*)"Acknowledgement failed", 0xC0);
 }
 
 void writeByte(uint8_t byte)
 {
-    PIR1bits.SSP1IF = 0;                //reset MSSP interrupt flag bit
+    
     SSP1BUF = byte;                     //slave address to transmit
     while(!PIR1bits.SSP1IF);            //MSSP interrupt flag bit set by hardware after 9th clock
+    PIR1bits.SSP1IF = 0;                //reset MSSP interrupt flag bit
     if(SSP1CON2bits.ACKSTAT)
         writeToLCD((uint8_t*)"Acknowledgement failed", 0xC0);
 }
