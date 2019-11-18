@@ -12,7 +12,7 @@
 
 void LCDCommand(uint8_t cmd);
 void LCDData(uint8_t cmd);
-void writeToLCD(uint8_t* p, uint8_t pos);
+void writeToLCD(void* p, uint8_t pos);
 void startI2C(void);
 void repeatStartI2C(void);
 void writeInit(void);
@@ -328,13 +328,13 @@ void LCDData(uint8_t cmd)
     EN = 0;
 }
 
-void writeToLCD(uint8_t* p, uint8_t pos)
+void writeToLCD(void* p, uint8_t pos)
 {
      LCDCommand(pos);
      __delay_ms(5);
-     while(*p)
+     while(*(uint8_t*)p)
      {
-           LCDData((uint8_t)*p++);
+           LCDData(*(uint8_t*)p++);
            __delay_ms(5);
      }
 }
