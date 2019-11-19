@@ -17,11 +17,10 @@ void DEMO_HTTP_Server(void)
     // create the socket for the TCP Server
     static tcpTCB_t port80TCB;
 
-    // create the TX and RX Server's buffers
-    
+    // create the RX Server's buffers    
     static uint8_t rxdataPort80[800];
     
-    uint16_t rxLen, txLen, k;
+    uint16_t rxLen, k;
     socketState_t socket_state;
 
     socket_state = TCP_SocketPoll(&port80TCB);
@@ -70,10 +69,10 @@ void DEMO_HTTP_Server(void)
                               TCP_Send(&port80TCB, (uint8_t*)not_modified_response, sizeof(not_modified_response));
                               break;
                         case BAD_REQUEST:
-                             TCP_Send(&port80TCB, (uint8_t*)bad_request_response, sizeof(bad_request_response));
-                             break;
+                              TCP_Send(&port80TCB, (uint8_t*)bad_request_response, sizeof(bad_request_response));
+                              break;
                         default:
-                            break;
+                              break;
                     }
                     TCP_InsertRxBuffer(&port80TCB, rxdataPort80, sizeof(rxdataPort80)); 
                                          
@@ -91,11 +90,12 @@ void DEMO_HTTP_Server(void)
 }
 
 
-webRequest_t getRequestType(char* rxData)
+webRequest_t getRequestType(char* rx_Data)
 {
-      uint8_t i;
+      uint8_t i;     
       char rx_Request[15];
-      memcpy(rx_Request, rxData,sizeof(rx_Request)-1);
+      
+      memcpy(rx_Request, rx_Data,sizeof(rx_Request)-1);
       rx_Request[sizeof(rx_Request)-1]='\0';
       
       for(i=0;i<4;i++)
@@ -104,5 +104,5 @@ webRequest_t getRequestType(char* rxData)
               return i;
       }
       
-      return i;
+      return BAD_REQUEST;
 }
