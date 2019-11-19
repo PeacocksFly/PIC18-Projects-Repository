@@ -7,26 +7,25 @@
 
 
 #include <xc.h>
+#include <stdint.h>
 
 #pragma config MCLRE= EXTMCLR, WDTEN=OFF, FOSC=HSHP
 #define _XTAL_FREQ 8000000
 
-#define RS PORTEbits.RE0
-#define RW PORTEbits.RE1
-#define EN PORTEbits.RE2
+#define RS LATEbits.LATE0
+#define RW LATEbits.LATE1
+#define EN LATEbits.LATE2
 
-void Delay_MilliSeconds(int ms);
-void LCDCommand(unsigned char cmd);
-void LCDData(unsigned char cmd);
+void LCDCommand(uint8_t cmd);
+void LCDData(uint8_t cmd);
+void writeToLCD(void* p, uint8_t pos);
 
 char value __at(0x050);
 
 void main(void) {
     
-    ANSELD = 0;
     TRISD = 0;
     
-    ANSELE = 0;
     TRISEbits.RE0 = 0;
     TRISEbits.RE1 = 0;
     TRISEbits.RE2 = 0;
@@ -35,37 +34,32 @@ void main(void) {
     TRISCbits.RC6 = 0;
     TRISCbits.RC7 = 1;
     
-    TXSTA1bits.SYNC = 0;
-    TXSTA1bits.TXEN = 1;
-    TXSTA1bits.BRGH = 0;
-    TXSTA1bits.TX9 = 0;
-    
+    //UART configuration
+    RCSTA1bits.SPEN = 1;                 //serial port enabled
+    TXSTA1bits.SYNC = 0;                 //EUSART asynchronous mode selected
+    TXSTA1bits.TXEN = 1;                 //transmit bit enabled
+    TXSTA1bits.BRGH = 0;                 //baud rate low speed (speed not doubled)
     RCSTA1bits.CREN = 1;
-    RCSTA1bits.SPEN = 1;
-    RCSTA1bits.RX9 = 0;
+    BAUDCON1bits.BRG16 = 0;              //8-bit baud rate generator
+    RCSTA1bits.RX9 = 0;                  //9 bits reception disabled
+    SPBRG1 = 0x0C;                       //baud rate = 9600
     
-    SPBRG1 = 0x0C;
+    EN = 0;  
+    __delay_ms(100);
+    LCDCommand(0x38);                   //LCD 2 lines, 5x7 matrix
+    __delay_ms(100);
+    LCDCommand(0x0C);                   //display on, cursor off
+    __delay_ms(5);
     
-    LCDCommand(0x0C);
-    Delay_MilliSeconds(250); 
-    EN = 0;
-    
-    
-    LCDCommand(0x01);
-    Delay_MilliSeconds(250);
-    LCDCommand(0x80);
-    Delay_MilliSeconds(250);
+    writeToLCD((uint8_t*)"Frequency", 0x80);
 
     while(1)
-    {
-        
-        while(PIR1bits.RC1IF == 0);
+    {       
+        while(PIR1bits.RC1IF);
         value = RCREG1;
         
-        
-        
         LCDData(value);
-        Delay_MilliSeconds(15);
+        __delay_ms(15);
         
     }
     
@@ -74,30 +68,34 @@ void main(void) {
 }
 
 
-void LCDCommand(unsigned char cmd)
+void LCDCommand(uint8_t cmd)
 {
-    PORTD = cmd;
+    LATD = cmd;
     RS = 0;
     RW = 0;
     EN = 1;
-    Delay_MilliSeconds(1);
+    __delay_ms(1);
     EN = 0;
 }
 
-void LCDData(unsigned char cmd)
+void LCDData(uint8_t cmd)
 {
-    PORTD = cmd;
+    LATD = cmd;
     RS = 1;
     RW = 0;
     EN = 1;
-    Delay_MilliSeconds(1);
+    __delay_ms(1);
     EN = 0;
 }
 
-void Delay_MilliSeconds(int ms)
+void writeToLCD(void* p, uint8_t pos)
 {
-    for(int i = 0; i< ms; i++)
-    {
-        __delay_ms(1);
-    }   
+     LCDCommand(pos);
+     __delay_ms(5);
+     while(*(uint8_t*)p)
+     {
+           LCDData(*(uint8_t*)p++);
+           __delay_ms(5);
+     }
 }
+
